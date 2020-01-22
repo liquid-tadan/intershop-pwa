@@ -31,6 +31,7 @@ const {
   ngExpressEngine,
   provideModuleMap,
   environment,
+  HYBRID_MAPPING_TABLE,
 } = require('./dist/server/main');
 
 const logging = !!process.env.LOGGING;
@@ -65,6 +66,72 @@ app.engine(
 
 app.set('view engine', 'html');
 app.set('views', join(DIST_FOLDER, 'browser'));
+
+app.use('*', (req, res, next) => {
+  const url = req.originalUrl;
+  let newUrl: string;
+
+  if (logging && !/.*\.([a-z]{2,3}|woff2?|json)(\?.*|)$/.test(url)) {
+    console.log('URL', url);
+  }
+
+  for (const entry of HYBRID_MAPPING_TABLE) {
+    const icmUrlRegex = new RegExp(entry.icm);
+    const pwaUrlRegex = new RegExp(entry.pwa);
+    if (icmUrlRegex.exec(url) && entry.handledBy === 'pwa') {
+      newUrl = url.replace(icmUrlRegex, '/' + entry.pwaBuild);
+      break;
+    } else if (pwaUrlRegex.exec(url) && entry.handledBy === 'icm') {
+      let locale;
+      if (/;lang=[\w_]+/.test(url)) {
+        const [, lang] = /;lang=([\w_]+)/.exec(url);
+        if (lang !== 'default') {
+          locale = environment.locales.find(loc => loc.lang === lang);
+        }
+      }
+      if (!locale) {
+        locale = environment.locales[0];
+      }
+
+      let channel;
+      if (/;channel=[^;]*/.test(url)) {
+        channel = /;channel=([^;]*)/.exec(url)[1];
+      } else {
+        channel = environment.icmChannel;
+      }
+
+      let application;
+      if (/;application=[^;]*/.test(url)) {
+        application = /;application=([^;]*)/.exec(url)[1];
+      } else {
+        application = environment.icmApplication || '-';
+      }
+
+      const parts = [
+        '',
+        environment.icmURLPrefix,
+        environment.icmWebURLPath,
+        environment.icmServerGroup,
+        channel,
+        locale.lang,
+        application,
+        locale.currency,
+        entry.icmBuild,
+      ];
+      newUrl = url.replace(pwaUrlRegex, parts.join('/')).replace(/;.*/g, '');
+      break;
+    }
+  }
+
+  if (newUrl) {
+    if (logging) {
+      console.log('RED', newUrl);
+    }
+    res.redirect(newUrl);
+  } else {
+    next();
+  }
+});
 
 // seo robots.txt
 const pathToRobotsTxt = join(DIST_FOLDER, 'robots.txt');
