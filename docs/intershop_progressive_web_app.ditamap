@@ -2,7 +2,10 @@
 <!DOCTYPE map PUBLIC "-//OASIS//DTD DITA Map//EN" "map.dtd">
 <map product="pwa" xml:lang="en-US">
     <title>Intershop Progressive Web App</title>
+    <topicref href="development-project" format="markdown"/>
+    <topicref href="development-tools.md" format="markdown"/>
     <topicref href="project-structure.md" format="markdown"/>
+    <topicref href="software-architecture" format="markdown"/>
     <topicref href="state-management.md" format="markdown"/>
     <topicref href="migrations.md" format="markdown"/>
     <topicref href="search-engine-optimization.md" format="markdown"/>
